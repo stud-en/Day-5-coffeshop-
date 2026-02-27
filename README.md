@@ -1,33 +1,26 @@
-# simulated-city-template
-
-This is a template repository.
-
-Get started by reading [docs/setup.md](docs/setup.md).
-See [docs/overview.md](docs/overview.md) for an overview of the base module content.
-
 ## Template for a project
+Coffeshop
 
 ### Step 1: Define Your Simulation (Before Any Code)
 
 Use this template to describe your project. Think about these four components and the messages they send between each other:
 
-### My Smart City Project: [Project Name]
+### My Smart City Project: Coffeshop
+I am making a city simulation, that simulates people moving inside of cofffeshops when it begins to rain. 
 
 #### 1. The Trigger (Who/What is moving?)
-Describe the **Agents** (Humans, Animals, Vehicles) and the **Surroundings** (Weather, Time).
-*Example: A citizen drops a pizza box into the smart-bin.*
+
+I am making a simulation of a city. In that city there are 5 people and 2 coffeshops. Every 10-15 seconds the weather changes from sunny to rain.   
 
 #### 2. The Observer (What does the city see?)
-What **Sensor** picks up the information? 
-*Example: An infrared sensor inside the bin detects the height of the trash.*
+The people get a signal that it is raining.
 
 #### 3. The Control Center (The Logic)
-How does the city "think" about this information?
-*Example: If the trash height is more than 80%, send a signal to the garbage department.*
+
+When it begins to rain tell people to go to the coffeshop
 
 #### 4. The Response (What happens next?)
-What is the **Controller** that changes the city?
-*Example: A digital map in the garbage truck updates to show a "High Priority" pickup.*
+People go to the coffeshop. The map sky color changes from blue to a darker gray. 
 
 ---
 
