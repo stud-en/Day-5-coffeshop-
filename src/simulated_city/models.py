@@ -8,6 +8,7 @@ class PersonState(str, Enum):
     """Simple behavior states for a person in the simulation."""
 
     RANDOM_WALK = "random_walk"
+    SEEKING_SHELTER = "seeking_shelter"
 
 
 @dataclass(slots=True)
