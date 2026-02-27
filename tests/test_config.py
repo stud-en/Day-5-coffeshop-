@@ -1,4 +1,6 @@
 from simulated_city.config import load_config
+import pytest
+import textwrap
 
 
 def test_load_config_defaults_when_missing(tmp_path) -> None:
@@ -125,3 +127,118 @@ def test_load_config_single_broker_with_active_profiles(tmp_path) -> None:
     # Only local broker in configs
     assert "local" in cfg.mqtt_configs
     assert len(cfg.mqtt_configs) == 1
+
+
+def test_load_config_parses_phase2_simulation_config(tmp_path) -> None:
+    """Phase 2: simulation movement/map config is parsed into typed fields."""
+    p = tmp_path / "config.yaml"
+    p.write_text(
+        textwrap.dedent(
+            """
+            mqtt:
+              active_profiles: [local]
+              profiles:
+                local:
+                  host: localhost
+                  port: 1883
+                  tls: false
+            simulation:
+              people_count: 5
+              seed: 7
+              movement:
+                tick_s: 0.5
+                total_ticks: 8
+                step_distance_m: 2.5
+                max_turn_deg: 30
+                boundary_mode: bounce
+              map:
+                min_x: 0
+                max_x: 50
+                min_y: 0
+                max_y: 60
+              names: [Alex, Sam]
+              colors: [red, blue]
+            """
+        ).strip(),
+        encoding="utf-8",
+    )
+
+    cfg = load_config(p)
+    assert cfg.simulation is not None
+    assert cfg.simulation.people_count == 5
+    assert cfg.simulation.seed == 7
+    assert cfg.simulation.movement.tick_s == 0.5
+    assert cfg.simulation.movement.total_ticks == 8
+    assert cfg.simulation.movement.step_distance_m == 2.5
+    assert cfg.simulation.movement.max_turn_deg == 30.0
+    assert cfg.simulation.map.min_x == 0.0
+    assert cfg.simulation.map.max_y == 60.0
+    assert cfg.simulation.names == ("Alex", "Sam")
+    assert cfg.simulation.colors == ("red", "blue")
+
+
+def test_load_config_normalizes_map_bounds(tmp_path) -> None:
+    """Phase 2: map bounds are normalized if min/max are reversed."""
+    p = tmp_path / "config.yaml"
+    p.write_text(
+        textwrap.dedent(
+            """
+            mqtt:
+              active_profiles: [local]
+              profiles:
+                local:
+                  host: localhost
+                  port: 1883
+                  tls: false
+            simulation:
+              movement:
+                tick_s: 1.0
+                total_ticks: 2
+                step_distance_m: 1.0
+                max_turn_deg: 20
+                boundary_mode: bounce
+              map:
+                min_x: 100
+                max_x: 0
+                min_y: 80
+                max_y: 10
+            """
+        ).strip(),
+        encoding="utf-8",
+    )
+
+    cfg = load_config(p)
+    assert cfg.simulation is not None
+    assert cfg.simulation.map.min_x == 0.0
+    assert cfg.simulation.map.max_x == 100.0
+    assert cfg.simulation.map.min_y == 10.0
+    assert cfg.simulation.map.max_y == 80.0
+
+
+def test_load_config_rejects_invalid_movement_ranges(tmp_path) -> None:
+    """Phase 2: invalid movement values are rejected."""
+    p = tmp_path / "config.yaml"
+    p.write_text(
+        textwrap.dedent(
+            """
+            mqtt:
+              active_profiles: [local]
+              profiles:
+                local:
+                  host: localhost
+                  port: 1883
+                  tls: false
+            simulation:
+              movement:
+                tick_s: -1
+                total_ticks: 2
+                step_distance_m: 1.0
+                max_turn_deg: 20
+                boundary_mode: bounce
+            """
+        ).strip(),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="simulation.movement.tick_s"):
+        load_config(p)

@@ -67,3 +67,23 @@ mqtt:
 #   # All available brokers by name:
 #   print(config.mqtt_configs["local"].host)
 #   print(config.mqtt_configs["mqtthq"].host)
+
+simulation:
+  people_count: 5
+  seed: 42
+
+  movement:
+    tick_s: 1.0
+    total_ticks: 20
+    step_distance_m: 1.2
+    max_turn_deg: 45.0
+    boundary_mode: "bounce"
+
+  map:
+    min_x: 0.0
+    max_x: 100.0
+    min_y: 0.0
+    max_y: 100.0
+
+  names: ["Alex", "Sam", "Jordan", "Taylor", "Casey", "Riley", "Morgan", "Avery", "Parker", "Quinn"]
+  colors: ["red", "blue", "green", "orange", "purple", "teal", "pink", "brown", "gray", "black"]

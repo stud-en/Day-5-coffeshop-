@@ -37,6 +37,27 @@ class SimulationLocationConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class MovementConfig:
+    """Movement settings for the phase-1/phase-2 people simulation."""
+
+    tick_s: float = 1.0
+    total_ticks: int = 20
+    step_distance_m: float = 1.2
+    max_turn_deg: float = 45.0
+    boundary_mode: str = "bounce"
+
+
+@dataclass(frozen=True, slots=True)
+class MapConfig:
+    """Simple 2D simulation bounds used for local random-walk movement."""
+
+    min_x: float = 0.0
+    max_x: float = 100.0
+    min_y: float = 0.0
+    max_y: float = 100.0
+
+
+@dataclass(frozen=True, slots=True)
 class SimulationConfig:
     """Configuration for the rubbish-bin simulation.
 
@@ -59,6 +80,33 @@ class SimulationConfig:
     start_time: datetime | None = None
     seed: int | None = None
     locations: tuple[SimulationLocationConfig, ...] = ()
+    people_count: int = 5
+    movement: MovementConfig = field(default_factory=MovementConfig)
+    map: MapConfig = field(default_factory=MapConfig)
+    names: tuple[str, ...] = (
+        "Alex",
+        "Sam",
+        "Jordan",
+        "Taylor",
+        "Casey",
+        "Riley",
+        "Morgan",
+        "Avery",
+        "Parker",
+        "Quinn",
+    )
+    colors: tuple[str, ...] = (
+        "red",
+        "blue",
+        "green",
+        "orange",
+        "purple",
+        "teal",
+        "pink",
+        "brown",
+        "gray",
+        "black",
+    )
 
 
 def _parse_utc_datetime(value: Any) -> datetime:
@@ -307,6 +355,47 @@ def _parse_simulation_config(raw: Any) -> SimulationConfig | None:
     seed_raw = raw.get("seed")
     seed = int(seed_raw) if seed_raw is not None else None
 
+    people_count = _ensure_positive_int(raw.get("people_count", raw.get("num_people", 5)), "simulation.people_count")
+
+    movement_raw = raw.get("movement") or {}
+    if not isinstance(movement_raw, dict):
+        raise ValueError("Config key 'simulation.movement' must be a mapping")
+
+    tick_s = _ensure_positive_float(movement_raw.get("tick_s", 1.0), "simulation.movement.tick_s")
+    total_ticks = _ensure_positive_int(movement_raw.get("total_ticks", 20), "simulation.movement.total_ticks")
+    step_distance_m = _ensure_positive_float(
+        movement_raw.get("step_distance_m", movement_raw.get("random_walk_step_m", 1.2)),
+        "simulation.movement.step_distance_m",
+    )
+    max_turn_deg = float(movement_raw.get("max_turn_deg", movement_raw.get("random_walk_turn_deg_max", 45.0)))
+    _ensure_in_range(max_turn_deg, "simulation.movement.max_turn_deg", min_value=0.0, max_value=180.0)
+    boundary_mode = str(movement_raw.get("boundary_mode", "bounce")).strip().lower()
+    if boundary_mode != "bounce":
+        raise ValueError("simulation.movement.boundary_mode must be 'bounce' for MVP")
+
+    movement = MovementConfig(
+        tick_s=tick_s,
+        total_ticks=total_ticks,
+        step_distance_m=step_distance_m,
+        max_turn_deg=max_turn_deg,
+        boundary_mode=boundary_mode,
+    )
+
+    map_raw = raw.get("map") or {}
+    if not isinstance(map_raw, dict):
+        raise ValueError("Config key 'simulation.map' must be a mapping")
+
+    min_x = float(map_raw.get("min_x", 0.0))
+    max_x = float(map_raw.get("max_x", 100.0))
+    min_y = float(map_raw.get("min_y", 0.0))
+    max_y = float(map_raw.get("max_y", 100.0))
+    min_x, max_x = _normalize_bounds(min_x, max_x)
+    min_y, max_y = _normalize_bounds(min_y, max_y)
+    map_cfg = MapConfig(min_x=min_x, max_x=max_x, min_y=min_y, max_y=max_y)
+
+    names = _parse_str_list(raw.get("names"), default=SimulationConfig().names, key_name="simulation.names")
+    colors = _parse_str_list(raw.get("colors"), default=SimulationConfig().colors, key_name="simulation.colors")
+
     locations_raw = raw.get("locations") or []
     if not isinstance(locations_raw, list):
         raise ValueError("Config key 'simulation.locations' must be a list")
@@ -337,7 +426,48 @@ def _parse_simulation_config(raw: Any) -> SimulationConfig | None:
         start_time=start_time,
         seed=seed,
         locations=tuple(locations),
+        people_count=people_count,
+        movement=movement,
+        map=map_cfg,
+        names=names,
+        colors=colors,
     )
+
+
+def _ensure_positive_float(value: Any, key_name: str) -> float:
+    parsed = float(value)
+    if parsed <= 0.0:
+        raise ValueError(f"{key_name} must be > 0")
+    return parsed
+
+
+def _ensure_positive_int(value: Any, key_name: str) -> int:
+    parsed = int(value)
+    if parsed <= 0:
+        raise ValueError(f"{key_name} must be > 0")
+    return parsed
+
+
+def _ensure_in_range(value: float, key_name: str, min_value: float, max_value: float) -> None:
+    if value < min_value or value > max_value:
+        raise ValueError(f"{key_name} must be between {min_value} and {max_value}")
+
+
+def _normalize_bounds(a: float, b: float) -> tuple[float, float]:
+    if a <= b:
+        return (a, b)
+    return (b, a)
+
+
+def _parse_str_list(value: Any, default: tuple[str, ...], key_name: str) -> tuple[str, ...]:
+    if value is None:
+        return default
+    if not isinstance(value, list):
+        raise ValueError(f"{key_name} must be a list of strings")
+    parsed = tuple(str(item).strip() for item in value if str(item).strip())
+    if not parsed:
+        return default
+    return parsed
 
 
 def _load_yaml_dict(path: str | Path) -> dict[str, Any]:
